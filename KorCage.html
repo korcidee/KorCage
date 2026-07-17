@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KorCage — Fight Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:        #0c0c0e;
+    --surface:   #17171a;
+    --surface-2: #1f1f23;
+    --line:      #2a2a30;
+    --bone:      #f4f0e6;
+    --bone-dim:  #c9c4b6;
+    --muted:     #8b8b93;
+    --crimson:   #e0263f;
+    --crimson-dim: #7a1420;
+    --win:       #c9a227;
+    --loss:      #8a4a45;
+    --font-display: 'Anton', Impact, 'Arial Narrow Bold', sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(224,38,63,0.10), transparent 60%),
+      var(--bg);
+    color: var(--bone);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+    min-height:100vh;
+  }
+
+  a{ color:inherit; }
+
+  /* ---------------- layout shell ---------------- */
+  .app{ max-width: 980px; margin:0 auto; padding: 0 20px 64px; }
+
+  /* ---------------- masthead ---------------- */
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 28px 0 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .masthead .brand{
+    font-family: var(--font-display);
+    font-size: 28px;
+    letter-spacing: 0.04em;
+    display:flex; align-items:center; gap:10px;
+  }
+  .masthead .brand .dot{
+    width:9px; height:9px; border-radius:50%;
+    background: var(--crimson);
+    box-shadow: 0 0 12px 2px rgba(224,38,63,0.65);
+  }
+  .masthead .tagline{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* ---------------- hero / next up ---------------- */
+  .hero{
+    padding: 36px 0 30px;
+    border-bottom: 1px solid var(--line);
+  }
+  .hero .eyebrow{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--crimson);
+    display:flex; align-items:center; gap:8px;
+    margin-bottom: 14px;
+  }
+  .hero .eyebrow .pulse{
+    width:6px; height:6px; border-radius:50%; background: var(--crimson);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.35; transform:scale(0.7); }
+  }
+
+  .hero-main{
+    display:flex; flex-wrap:wrap; gap: 28px; align-items:flex-end; justify-content:space-between;
+  }
+
+  .matchup{
+    font-family: var(--font-display);
+    line-height: 0.94;
+    font-size: clamp(30px, 5.4vw, 52px);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+  }
+  .matchup a{
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: border-color .15s ease, opacity .15s ease;
+  }
+  .matchup a:hover{
+    border-bottom-color: var(--crimson);
+    opacity: 0.9;
+  }
+  .matchup .vs{
+    color: var(--crimson);
+    font-family: var(--font-mono);
+    font-size: 0.4em;
+    display:inline-block;
+    margin: 0 10px;
+    vertical-align: middle;
+    letter-spacing: 0.1em;
+  }
+
+  .event-meta{
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 10px;
+    letter-spacing: 0.03em;
+  }
+  .event-meta b{ color: var(--bone-dim); font-weight: 500; }
+
+  /* octagon countdown */
+  .countdown{ display:flex; gap:10px; }
+  .countdown .unit{
+    position:relative;
+    width: 66px; height: 74px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  }
+  .countdown .unit .num{
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--bone);
+    line-height:1;
+  }
+  .countdown .unit .lbl{
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    margin-top: 6px;
+    text-transform: uppercase;
+  }
+
+  /* ---------------- event tabs ---------------- */
+  .event-tabs{
+    display:flex; gap:8px; overflow-x:auto;
+    padding: 22px 0 4px;
+  }
+  .event-tab{
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 9px 14px;
+    cursor:pointer;
+    white-space:nowrap;
+    transition: all .15s ease;
+  }
+  .event-tab:hover{ border-color: var(--bone-dim); color: var(--bone); }
+  .event-tab.active{
+    background: var(--crimson);
+    border-color: var(--crimson);
+    color: var(--bone);
+    font-weight: 500;
+  }
+  .event-tab .tag{
+    display:inline-block;
+    margin-left:8px;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    letter-spacing: 0.06em;
+  }
+  .event-tab .tag.tag-results{ background: var(--win); color:#241c00; }
+  .event-tab .tag.tag-upcoming{ background: rgba(224,38,63,0.18); color: var(--crimson); }
+  .event-tab.active .tag.tag-upcoming{ background: rgba(0,0,0,0.25); color: var(--bone); }
+  .event-tab.active .tag.tag-results{ background: rgba(0,0,0,0.25); color: var(--bone); }
+
+  /* ---------------- toolbar ---------------- */
+  .toolbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 18px 0 6px;
+  }
+  .toolbar .event-title{
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .toolbar .event-sub{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .switch-row{
+    display:flex; align-items:center; gap:10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .switch{
+    position:relative;
+    width: 40px; height: 22px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 12px;
+    cursor:pointer;
+    flex: 0 0 auto;
+  }
+  .switch .knob{
+    position:absolute; top:2px; left:2px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform .18s ease, background .18s ease;
+  }
+  .switch.on{ border-color: var(--crimson); background: rgba(224,38,63,0.14); }
+  .switch.on .knob{ transform: translateX(18px); background: var(--crimson); }
+
+  /* ---------------- fight list ---------------- */
+  .fight-list{ margin-top: 10px; }
+
+  .fight-row{
+    display:grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items:center;
+    gap: 14px;
+    padding: 16px 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    margin-bottom: 8px;
+    position:relative;
+  }
+  .fight-row.is-main-event{
+    border-color: var(--crimson-dim);
+    background: linear-gradient(180deg, rgba(224,38,63,0.06), var(--surface) 40%);
+  }
+  .fight-row .corner{
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .fight-row .corner.right{ text-align:right; align-items:flex-end; }
+  .fighter-name{
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+  }
+  .fighter-name a{
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .fighter-name a:hover{
+    color: var(--crimson);
+    border-bottom-color: var(--crimson);
+  }
+  .fighter-name .rank{
+    font-family: var(--font-mono);
+    color: var(--crimson);
+    font-size: 11px;
+    margin-right: 6px;
+  }
+  .fighter-name.winner::after{
+    content: 'W';
+    display:inline-block;
+    margin-left: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: #241c00;
+    background: var(--win);
+    padding: 1px 5px;
+    border-radius: 2px;
+    vertical-align: middle;
+  }
+  .corner.right .fighter-name.winner::after{ margin-left: 0; margin-right: 8px; }
+  .fighter-name.loser{ color: var(--bone-dim); opacity: 0.7; }
+
+  .weight-badge{
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .weight-badge .belt{ color: var(--win); }
+
+  .vs-pill{
+    font-family: var(--font-display);
+    font-size: 14px;
+    color: var(--crimson);
+    letter-spacing: 0.05em;
+  }
+  .vs-pill .tag-line{
+    font-family: var(--font-mono);
+    display:block;
+    font-size: 8.5px;
+    color: var(--muted);
+    text-align:center;
+    margin-top: 4px;
+    letter-spacing: 0.06em;
+  }
+
+  .result-strip{
+    grid-column: 1 / -1;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    display:flex; gap: 18px; flex-wrap:wrap;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--bone-dim);
+  }
+  .result-strip span b{ color: var(--muted); font-weight:500; }
+
+  .main-card-flag{
+    position:absolute; top:0; left:0;
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+    background: var(--crimson);
+    color: var(--bone);
+    padding: 3px 8px;
+    text-transform: uppercase;
+  }
+  .prelim-flag{
+    position:absolute; top:0; left:0;
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+    background: var(--surface-2);
+    color: var(--muted);
+    padding: 3px 8px;
+    text-transform: uppercase;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .empty-note{
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    text-align:center;
+    padding: 30px 10px;
+    border: 1px dashed var(--line);
+  }
+
+  footer{
+    margin-top: 40px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+
+  @media (max-width: 620px){
+    .fight-row{ grid-template-columns: 1fr; text-align:center; }
+    .fight-row .corner.right{ align-items:center; text-align:center; }
+    .fight-row .corner{ align-items:center; text-align:center; }
+    .vs-pill{ order:2; margin: 6px 0; }
+    .countdown .unit{ width: 54px; height: 62px; }
+    .countdown .unit .num{ font-size: 18px; }
+    .hero-main{ align-items:flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="masthead">
+    <div class="brand"><span class="dot"></span>KorCage</div>
+    <div class="tagline">Fight Tracker</div>
+  </header>
+
+  <section class="hero" id="hero"><!-- injected by JS --></section>
+
+  <nav class="event-tabs" id="eventTabs"><!-- injected by JS --></nav>
+
+  <section class="toolbar">
+    <div>
+      <div class="event-title" id="activeEventTitle">—</div>
+      <div class="event-sub" id="activeEventSub">—</div>
+    </div>
+    <div class="switch-row">
+      Main card only
+      <div class="switch" id="mainCardSwitch"><div class="knob"></div></div>
+    </div>
+  </section>
+
+  <section class="fight-list" id="fightList"><!-- injected by JS --></section>
+
+  <footer>
+    <span id="dataStatus">Loading…</span>
+    <span id="clock"></span>
+  </footer>
+
+</div>
+
+<script>
+/* =========================================================================
+   LIVE-UPDATE CONFIG
+   Point DATA_URL at a JSON endpoint that returns an array shaped exactly like
+   the FALLBACK_EVENTS below (see the write-up for how to stand one up with
+   zero backend code — e.g. a GitHub Action writing a JSON file on a cron).
+   Leave DATA_URL empty to just run on the bundled sample data below — the
+   tracker still auto-advances (countdown, "next up" fight, Upcoming→Results
+   tags) purely from the clock, it just won't pick up brand-new fight cards
+   or real results until DATA_URL is set.
+   ========================================================================= */
+const DATA_URL = '';              // e.g. 'https://yourdomain.com/events.json'
+const POLL_MINUTES = 10;          // how often to re-fetch DATA_URL for new data
+const REFRESH_SECONDS = 30;       // how often to re-evaluate "now" against existing data
+let lastUpdated = null;
+
+/* =========================================================================
+   FALLBACK / SAMPLE DATA
+   Used on first load, and again any time DATA_URL is empty or unreachable.
+   All dates are ISO strings with explicit UTC offsets for the event's venue.
+
+   NOTE: `status` below is only a fallback label used before the first
+   render — the app always recomputes upcoming/results from `date` vs. the
+   current time (see getEventStatus), so events flip automatically as they
+   pass without needing this field kept in sync by hand.
+   ========================================================================= */
+let EVENTS = [
+  // Every fighter below carries a `url` pointing at their official
+  // ufc.com/athlete/... profile page, pulled straight from the event's
+  // official UFC.com fight-card listing — see fighterMarkup() for how
+  // that turns the name into a clickable link.
+  {
+    id: 'ufc281',
+    name: 'UFC Fight Night: Du Plessis vs. Usman',
+    shortName: 'UFC Fight Night 281',
+    date: '2026-07-18T19:00:00-05:00', // main card 8:00 PM EDT = 7:00 PM CDT (Oklahoma City)
+    venue: 'Paycom Center',
+    city: 'Oklahoma City, Oklahoma',
+    broadcast: 'Paramount+',
+    // Full card per the official UFC.com event page.
+    fights: [
+      // --- Main Card ---
+      { weight:'Middleweight', mainEvent:true, mainCard:true,
+        a:{ name:'Dricus Du Plessis', rank:'#2', url:'https://www.ufc.com/athlete/dricus-du-plessis' },
+        b:{ name:'Kamaru Usman', rank:'#9', url:'https://www.ufc.com/athlete/kamaru-usman' } },
+      { weight:'Middleweight', mainCard:true,
+        a:{ name:'Jared Cannonier', rank:'#10', url:'https://www.ufc.com/athlete/jared-cannonier' },
+        b:{ name:'Christian Leroy Duncan', rank:'#12', url:'https://www.ufc.com/athlete/christian-leroy-duncan' } },
+      { weight:'Lightweight', mainCard:true,
+        a:{ name:'Chase Hooper', url:'https://www.ufc.com/athlete/chase-hooper' },
+        b:{ name:'Mitch Ramirez', url:'https://www.ufc.com/athlete/mitch-ramirez' } },
+      { weight:'Women\'s Strawweight', mainCard:true,
+        a:{ name:'Tabatha Ricci', rank:'#8', url:'https://www.ufc.com/athlete/tabatha-ricci' },
+        b:{ name:'Fatima Kline', rank:'#11', url:'https://www.ufc.com/athlete/fatima-kline' } },
+      { weight:'Featherweight', mainCard:true,
+        a:{ name:'Tommy McMillen', url:'https://www.ufc.com/athlete/tommy-mcmillen' },
+        b:{ name:'Alberto Montes', url:'https://www.ufc.com/athlete/alberto-montes' } },
+      // --- Prelims ---
+      { weight:'Featherweight', mainCard:false,
+        a:{ name:'Austin Bashi', url:'https://www.ufc.com/athlete/austin-bashi' },
+        b:{ name:'Jose Miguel Delgado', url:'https://www.ufc.com/athlete/jose-miguel-delgado' } },
+      { weight:'Welterweight', mainCard:false,
+        a:{ name:'Jean-Paul Lebosnoyani', url:'https://www.ufc.com/athlete/jean-paul-lebosnoyani' },
+        b:{ name:'Seokhyeon Ko', url:'https://www.ufc.com/athlete/seokhyeon-ko' } },
+      { weight:'Light Heavyweight', mainCard:false,
+        a:{ name:'Levi Rodrigues Jr.', url:'https://www.ufc.com/athlete/levi-rodrigues-jr' },
+        b:{ name:'Felipe Franco', url:'https://www.ufc.com/athlete/felipe-franco' } },
+      { weight:'Flyweight', mainCard:false,
+        a:{ name:'Alden Coria', url:'https://www.ufc.com/athlete/alden-coria' },
+        b:{ name:'Stewart Nicoll', url:'https://www.ufc.com/athlete/stewart-nicoll' } },
+      { weight:'Heavyweight', mainCard:false,
+        a:{ name:'RJ Harris', url:'https://www.ufc.com/athlete/rj-harris' },
+        b:{ name:'Alvin Hines', url:'https://www.ufc.com/athlete/alvin-hines' } },
+      { weight:'Women\'s Flyweight', mainCard:false,
+        a:{ name:'Anna Melisano', url:'https://www.ufc.com/athlete/anna-melisano' },
+        b:{ name:'Dione Barbosa', url:'https://www.ufc.com/athlete/dione-barbosa' } },
+      { weight:'Featherweight', mainCard:false,
+        a:{ name:'Ezra Elliot', url:'https://www.ufc.com/athlete/ezra-elliot' },
+        b:{ name:'Damien Anderson', url:'https://www.ufc.com/athlete/damien-anderson' } },
+    ]
+  },
+  {
+    id: 'ufc282',
+    name: 'UFC Fight Night: Ankalaev vs. Guskov',
+    shortName: 'UFC Fight Night 282',
+    date: '2026-07-25T12:00:00-04:00', // main card start, 12:00 PM EDT
+    venue: 'Etihad Arena',
+    city: 'Abu Dhabi, United Arab Emirates',
+    broadcast: 'Paramount+',
+    // Full card per the official UFC.com event page. Ankalaev lost the
+    // belt to Carlos Ulberg at UFC 327 (Apr 2026) and is now the #1
+    // contender, not champion — so no belt/title flags on this fight.
+    fights: [
+      // --- Main Card ---
+      { weight:'Light Heavyweight', mainEvent:true, mainCard:true,
+        a:{ name:'Magomed Ankalaev', rank:'#1', url:'https://www.ufc.com/athlete/magomed-ankalaev' },
+        b:{ name:'Bogdan Guskov', rank:'#9', url:'https://www.ufc.com/athlete/bogdan-guskov' } },
+      { weight:'Flyweight', mainCard:true,
+        a:{ name:'Steve Erceg', rank:'#10', url:'https://www.ufc.com/athlete/steve-erceg' },
+        b:{ name:'Ramazan Temirov', url:'https://www.ufc.com/athlete/ramazan-temirov' } },
+      { weight:'Welterweight', mainCard:true,
+        a:{ name:'Islam Dulatov', url:'https://www.ufc.com/athlete/islam-dulatov' },
+        b:{ name:'Wellington Turman', url:'https://www.ufc.com/athlete/wellington-turman' } },
+      { weight:'Lightweight', mainCard:true,
+        a:{ name:'Magomed Zaynukov', url:'https://www.ufc.com/athlete/magomed-zaynukov' },
+        b:{ name:'Damian Rzepecki', url:'https://www.ufc.com/athlete/damian-rzepecki' } },
+      { weight:'Heavyweight', mainCard:true,
+        a:{ name:'Rizvan Kuniev', rank:'#8', url:'https://www.ufc.com/athlete/rizvan-kuniev' },
+        b:{ name:'Tyrell Fortune', rank:'#9', url:'https://www.ufc.com/athlete/tyrell-fortune' } },
+      { weight:'Lightweight', mainCard:true,
+        a:{ name:'Ismael Bonfim', url:'https://www.ufc.com/athlete/ismael-bonfim' },
+        b:{ name:'Axel Sola', url:'https://www.ufc.com/athlete/axel-sola' } },
+      // --- Prelims ---
+      { weight:'Heavyweight', mainCard:false,
+        a:{ name:'Valter Walker', rank:'#13', url:'https://www.ufc.com/athlete/valter-walker' },
+        b:{ name:'Thomas Petersen', url:'https://www.ufc.com/athlete/thomas-petersen' } },
+      { weight:'Heavyweight', mainCard:false,
+        a:{ name:'Uran Satybaldiev', url:'https://www.ufc.com/athlete/uran-satybaldiev' },
+        b:{ name:'Dustin Jacoby', url:'https://www.ufc.com/athlete/dustin-jacoby' } },
+      { weight:'Welterweight', mainCard:false,
+        a:{ name:'Santiago Ponzinibbio', url:'https://www.ufc.com/athlete/santiago-ponzinibbio' },
+        b:{ name:'Sam Patterson', url:'https://www.ufc.com/athlete/sam-patterson' } },
+      { weight:'Light Heavyweight', mainCard:false,
+        a:{ name:'Magomed Tuchalov', url:'https://www.ufc.com/athlete/magomed-tuchalov' },
+        b:{ name:'Brendson Ribeiro', url:'https://www.ufc.com/athlete/brendson-ribeiro' } },
+      { weight:'Lightweight', mainCard:false,
+        a:{ name:'Nurullo Aliev', url:'https://www.ufc.com/athlete/nurullo-aliev' },
+        b:{ name:'Mike Davis', url:'https://www.ufc.com/athlete/mike-davis' } },
+    ]
+  },
+  {
+    id: 'ufc330',
+    name: 'UFC 330: Makhachev vs. Machado Garry',
+    shortName: 'UFC 330',
+    date: '2026-08-15T18:00:00-04:00', // main card, 6:00 PM EDT, Philadelphia
+    venue: 'Xfinity Mobile Arena',
+    city: 'Philadelphia, Pennsylvania',
+    broadcast: 'Paramount+',
+    // Makhachev vacated lightweight and won the welterweight belt at
+    // UFC 322 — this is a welterweight title defense, not lightweight.
+    // Only 4 bouts are on UFC.com's official card so far (more are
+    // reported elsewhere but not yet posted to ufc.com as of this data
+    // pull); the rest will show up here once the promotion adds them.
+    fights: [
+      { weight:'Welterweight', mainEvent:true, mainCard:true, title:true,
+        a:{ name:'Islam Makhachev', belt:true, url:'https://www.ufc.com/athlete/islam-makhachev' },
+        b:{ name:'Ian Machado Garry', rank:'#1', url:'https://www.ufc.com/athlete/ian-machado-garry' } },
+      { weight:'Women\'s Strawweight', mainCard:true, title:true,
+        a:{ name:'Mackenzie Dern', belt:true, url:'https://www.ufc.com/athlete/mackenzie-dern' },
+        b:{ name:'Gillian Robertson', rank:'#5', url:'https://www.ufc.com/athlete/gillian-robertson' } },
+      { weight:'Lightweight', mainCard:false,
+        a:{ name:'Edson Barboza', url:'https://www.ufc.com/athlete/edson-barboza' },
+        b:{ name:'Esteban Ribovics', url:'https://www.ufc.com/athlete/esteban-ribovics' } },
+      { weight:'Women\'s Flyweight', mainCard:false,
+        a:{ name:'Erin Blanchfield', rank:'#4', url:'https://www.ufc.com/athlete/erin-blanchfield' },
+        b:{ name:'Jasmine Jasudavicius', rank:'#7', url:'https://www.ufc.com/athlete/jasmine-jasudavicius' } },
+    ]
+  },
+  {
+    id: 'ufc329',
+    name: 'UFC 329: McGregor vs. Holloway 2',
+    shortName: 'UFC 329',
+    date: '2026-07-11T22:00:00-04:00',
+    venue: 'T-Mobile Arena',
+    city: 'Paradise, Nevada',
+    broadcast: 'Paramount+',
+    // Full card per the official UFC.com Main Card / Prelim results pages.
+    fights: [
+      // --- Main Card ---
+      { weight:'Welterweight', mainEvent:true, mainCard:true,
+        a:{ name:'Max Holloway', url:'https://www.ufc.com/athlete/max-holloway' },
+        b:{ name:'Conor McGregor', url:'https://www.ufc.com/athlete/conor-mcgregor' },
+        result:{ winner:'a', method:'TKO (knee injury)', round:1, time:'1:09' } },
+      { weight:'Lightweight', mainCard:true,
+        a:{ name:'Paddy Pimblett', url:'https://www.ufc.com/athlete/paddy-pimblett' },
+        b:{ name:'Benoit Saint Denis', url:'https://www.ufc.com/athlete/benoit-saint-denis' },
+        result:{ winner:'a', method:'Technical submission (D\'arce choke)', round:1, time:'0:52' } },
+      { weight:'Bantamweight', mainCard:true,
+        a:{ name:'Mario Bautista', url:'https://www.ufc.com/athlete/mario-bautista' },
+        b:{ name:'Cory Sandhagen', url:'https://www.ufc.com/athlete/cory-sandhagen' },
+        result:{ winner:'a', method:'Decision (unanimous)', round:3, time:'5:00' } },
+      { weight:'Flyweight', mainCard:true,
+        a:{ name:'Brandon Royval', url:'https://www.ufc.com/athlete/brandon-royval' },
+        b:{ name:'Lone\'er Kavanagh', url:'https://www.ufc.com/athlete/loneer-kavanagh' },
+        result:{ winner:'a', method:'Submission (rear-naked choke)', round:3, time:'3:39' } },
+      { weight:'Lightweight', mainCard:true,
+        a:{ name:'King Green', url:'https://www.ufc.com/athlete/bobby-green' },
+        b:{ name:'Terrance McKinney', url:'https://www.ufc.com/athlete/terrance-mckinney' },
+        result:{ winner:'a', method:'TKO (strikes)', round:1, time:'4:59' } },
+      // --- Prelims ---
+      { weight:'Light Heavyweight', mainCard:false,
+        a:{ name:'Robert Whittaker', url:'https://www.ufc.com/athlete/robert-whittaker' },
+        b:{ name:'Nikita Krylov', url:'https://www.ufc.com/athlete/nikita-krylov' },
+        result:{ winner:'a', method:'TKO (strikes)', round:3, time:'1:01' } },
+      { weight:'Heavyweight', mainCard:false,
+        a:{ name:'Gable Steveson', url:'https://www.ufc.com/athlete/gable-steveson' },
+        b:{ name:'Elisha Ellison', url:'https://www.ufc.com/athlete/elisha-ellison' },
+        result:{ winner:'a', method:'TKO (strikes)', round:1, time:'2:32' } },
+      { weight:'Bantamweight', mainCard:false,
+        a:{ name:'Adrian Yanez', url:'https://www.ufc.com/athlete/adrian-yanez' },
+        b:{ name:'Cody Garbrandt', url:'https://www.ufc.com/athlete/cody-garbrandt' },
+        result:{ winner:'a', method:'TKO (strikes)', round:1, time:'2:47' } },
+      { weight:'Lightweight', mainCard:false,
+        a:{ name:'Luke Riley', url:'https://www.ufc.com/athlete/luke-riley' },
+        b:{ name:'Kai Kamaka III', url:'https://www.ufc.com/athlete/kai-kamaka-iii' },
+        result:{ winner:'a', method:'TKO (strikes)', round:1, time:'3:03' } },
+      { weight:'Women\'s Flyweight', mainCard:false,
+        a:{ name:'Wang Cong', url:'https://www.ufc.com/athlete/wang-cong' },
+        b:{ name:'Tracy Cortez', url:'https://www.ufc.com/athlete/tracy-cortez' },
+        result:{ winner:'a', method:'Decision (unanimous)', round:3, time:'5:00' } },
+      { weight:'Middleweight', mainCard:false,
+        a:{ name:'Damian Pinas', url:'https://www.ufc.com/athlete/damian-pinas' },
+        b:{ name:'Cesar Almeida', url:'https://www.ufc.com/athlete/cesar-almeida' },
+        result:{ winner:'a', method:'KO (right hand)', round:1, time:'4:44' } },
+      { weight:'Bantamweight', mainCard:false,
+        a:{ name:'Farid Basharat', url:'https://www.ufc.com/athlete/farid-basharat' },
+        b:{ name:'John Garza', url:'https://www.ufc.com/athlete/john-garza' },
+        result:{ winner:'a', method:'Decision (unanimous)', round:3, time:'5:00' } },
+      { weight:'Middleweight', mainCard:false,
+        a:{ name:'Ryan Gandra', url:'https://www.ufc.com/athlete/ryan-gandra' },
+        b:{ name:'Zachary Reese', url:'https://www.ufc.com/athlete/zachary-reese' },
+        result:{ winner:'a', method:'TKO (strikes)', round:1, time:'1:15' } },
+      { weight:'Flyweight', mainCard:false,
+        a:{ name:'Alessandro Costa', url:'https://www.ufc.com/athlete/alessandro-costa' },
+        b:{ name:'Cody Durden', url:'https://www.ufc.com/athlete/cody-durden' },
+        result:{ winner:'a', method:'Submission (rear-naked choke)', round:2, time:'2:19' } },
+    ]
+  },
+];
+
+/* ========================================================================= */
+
+let activeEventId = null;
+let userPickedTab = false; // once true, auto-refresh stops stealing the user's tab choice
+let mainCardOnly = false;
+
+// Single source of truth for upcoming vs. results — always derived from the
+// event's date compared to right now, never a stale hand-set field.
+function getEventStatus(ev){
+  return new Date(ev.date).getTime() <= Date.now() ? 'results' : 'upcoming';
+}
+
+function nearestUpcoming(){
+  const now = Date.now();
+  const upcoming = EVENTS.filter(e => new Date(e.date).getTime() > now);
+  upcoming.sort((a,b) => new Date(a.date) - new Date(b.date));
+  return upcoming[0] || EVENTS[EVENTS.length - 1];
+}
+
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+}
+function fmtTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+}
+
+function renderHero(){
+  const ev = nearestUpcoming();
+  const main = ev.fights.find(f => f.mainEvent) || ev.fights[0];
+  const hero = document.getElementById('hero');
+  hero.innerHTML = `
+    <div class="eyebrow"><span class="pulse"></span>Next up &middot; ${ev.shortName}</div>
+    <div class="hero-main">
+      <div>
+        <div class="matchup">${main.a.url ? `<a href="${main.a.url}" target="_blank" rel="noopener noreferrer">${main.a.name}</a>` : main.a.name}<span class="vs">VS</span>${main.b.url ? `<a href="${main.b.url}" target="_blank" rel="noopener noreferrer">${main.b.name}</a>` : main.b.name}</div>
+        <div class="event-meta">
+          <b>${fmtDate(ev.date)}</b> &middot; ${fmtTime(ev.date)}<br/>
+          ${ev.venue}, ${ev.city} &middot; ${ev.broadcast}
+        </div>
+      </div>
+      <div class="countdown" id="countdown">
+        <div class="unit"><div class="num" id="cd-d">00</div><div class="lbl">Days</div></div>
+        <div class="unit"><div class="num" id="cd-h">00</div><div class="lbl">Hrs</div></div>
+        <div class="unit"><div class="num" id="cd-m">00</div><div class="lbl">Min</div></div>
+        <div class="unit"><div class="num" id="cd-s">00</div><div class="lbl">Sec</div></div>
+      </div>
+    </div>
+  `;
+  tickCountdown(ev.date);
+}
+
+let countdownTarget = null;
+function tickCountdown(targetIso){
+  countdownTarget = new Date(targetIso).getTime();
+}
+setInterval(() => {
+  if(!countdownTarget) return;
+  let diff = countdownTarget - Date.now();
+  if(diff <= 0){
+    // The event we were counting down to just started — re-pick "next up"
+    // and re-render everything so the hero and tabs advance on their own.
+    renderHero();
+    renderAll();
+    return;
+  }
+  const d = Math.floor(diff / 86400000); diff -= d*86400000;
+  const h = Math.floor(diff / 3600000); diff -= h*3600000;
+  const m = Math.floor(diff / 60000); diff -= m*60000;
+  const s = Math.floor(diff / 1000);
+  const set = (id,val) => { const el = document.getElementById(id); if(el) el.textContent = String(val).padStart(2,'0'); };
+  set('cd-d', d); set('cd-h', h); set('cd-m', m); set('cd-s', s);
+}, 1000);
+
+function renderTabs(){
+  const wrap = document.getElementById('eventTabs');
+  wrap.innerHTML = EVENTS.map(ev => {
+    const status = getEventStatus(ev);
+    const tag = status === 'results'
+      ? `<span class="tag tag-results">Results</span>`
+      : `<span class="tag tag-upcoming">Upcoming</span>`;
+    return `<button class="event-tab${ev.id===activeEventId?' active':''}" data-id="${ev.id}">${ev.shortName}${tag}</button>`;
+  }).join('');
+  wrap.querySelectorAll('.event-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeEventId = btn.dataset.id;
+      userPickedTab = true;
+      renderAll();
+    });
+  });
+}
+
+function fighterMarkup(f, side, result){
+  const isWinner = result && result.winner === side;
+  const isLoser = result && result.winner && result.winner !== side;
+  const rank = f.rank ? `<span class="rank">${f.rank}</span>` : '';
+  const belt = f.belt ? `<span class="weight-badge belt">&#9733; Champion</span>` : '';
+  // Fighter name links out to their official ufc.com/athlete/... profile
+  // when we have one on file; falls back to plain text otherwise.
+  const nameHtml = f.url
+    ? `<a href="${f.url}" target="_blank" rel="noopener noreferrer">${f.name}</a>`
+    : f.name;
+  return `
+    <div class="corner ${side==='b' ? 'right':''}">
+      <div class="fighter-name ${isWinner?'winner':''} ${isLoser?'loser':''}">${rank}${nameHtml}</div>
+      ${belt}
+    </div>
+  `;
+}
+
+function renderFightRow(fight){
+  const flag = fight.mainCard
+    ? `<div class="main-card-flag">Main Card</div>`
+    : `<div class="prelim-flag">Prelim</div>`;
+  const resultBlock = fight.result ? `
+    <div class="result-strip">
+      <span><b>Method</b> ${fight.result.method}</span>
+      <span><b>Round</b> ${fight.result.round}</span>
+      <span><b>Time</b> ${fight.result.time}</span>
+    </div>` : '';
+  return `
+    <div class="fight-row ${fight.mainEvent?'is-main-event':''}">
+      ${flag}
+      ${fighterMarkup(fight.a, 'a', fight.result)}
+      <div class="vs-pill">VS<span class="tag-line">${fight.title ? 'Title Bout' : fight.weight}</span></div>
+      ${fighterMarkup(fight.b, 'b', fight.result)}
+      ${resultBlock}
+    </div>
+  `;
+}
+
+function renderFightList(){
+  const ev = EVENTS.find(e => e.id === activeEventId);
+  const list = document.getElementById('fightList');
+  const title = document.getElementById('activeEventTitle');
+  const sub = document.getElementById('activeEventSub');
+  if(!ev){ list.innerHTML=''; return; }
+
+  title.textContent = ev.name;
+  sub.textContent = `${fmtDate(ev.date)} — ${ev.venue}, ${ev.city}`;
+
+  const fights = mainCardOnly ? ev.fights.filter(f => f.mainCard) : ev.fights;
+
+  if(fights.length === 0){
+    list.innerHTML = `<div class="empty-note">No main card fights announced yet for this event.</div>`;
+    return;
+  }
+  list.innerHTML = fights.map(renderFightRow).join('');
+}
+
+function renderAll(){
+  // Only auto-jump the selected tab to "next up" until the user has picked
+  // one themselves — after that, respect their choice across refreshes.
+  if(!activeEventId || !userPickedTab) activeEventId = nearestUpcoming().id;
+  renderTabs();
+  renderFightList();
+}
+
+document.getElementById('mainCardSwitch').addEventListener('click', (e) => {
+  mainCardOnly = !mainCardOnly;
+  e.currentTarget.classList.toggle('on', mainCardOnly);
+  renderFightList();
+});
+
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleString('en-US', {
+    weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'
+  });
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+/* ---------------- live data loading ---------------- */
+async function loadEvents(isBackgroundRefresh){
+  const statusEl = document.getElementById('dataStatus');
+  if(!DATA_URL){
+    lastUpdated = new Date();
+    if(statusEl) statusEl.textContent = 'Sample data (no DATA_URL configured) · auto-refreshing';
+    renderHero();
+    renderAll();
+    return;
+  }
+  try{
+    const res = await fetch(DATA_URL, { cache: 'no-store' });
+    if(!res.ok) throw new Error('bad response: ' + res.status);
+    const data = await res.json();
+    if(!Array.isArray(data) || data.length === 0) throw new Error('empty/invalid payload');
+    EVENTS = data;
+    lastUpdated = new Date();
+    if(statusEl) statusEl.textContent = 'Live · updated ' + lastUpdated.toLocaleTimeString();
+  }catch(err){
+    console.warn('KorCage: could not load live data, using fallback.', err);
+    lastUpdated = new Date();
+    if(statusEl) statusEl.textContent = 'Live source unreachable — showing sample data';
+  }
+  renderHero();
+  renderAll();
+}
+
+loadEvents(false);
+
+// Two auto-update loops:
+// 1) Cheap "re-evaluate the clock" pass so upcoming→results tags, the "next
+//    up" hero fight, and the active tab all advance on their own — this runs
+//    whether or not DATA_URL is configured.
+setInterval(() => { renderTabs(); if(!userPickedTab) renderFightList(); }, REFRESH_SECONDS * 1000);
+// 2) Expensive "go fetch new data" pass, only when a real DATA_URL is set.
+if(DATA_URL){
+  setInterval(() => loadEvents(true), POLL_MINUTES * 60 * 1000);
+}
+</script>
+
+</body>
+</html>
